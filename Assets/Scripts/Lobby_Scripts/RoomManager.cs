@@ -112,7 +112,62 @@ public class RoomManager : MonoBehaviour
     {
         if (NetworkManager.Singleton.IsServer)
         {
+            // 🌟 [수정됨] 씬이 로드되었을 때 스폰 함수(OnGameSceneLoaded)가 실행되도록 이벤트 연결
+            NetworkManager.Singleton.SceneManager.OnLoadEventCompleted += OnGameSceneLoaded;
             NetworkManager.Singleton.SceneManager.LoadScene("GameScene", UnityEngine.SceneManagement.LoadSceneMode.Single);
+        }
+    }
+
+    // 🌟 깃허브 충돌 기호(<<<< ==== >>>>)를 모두 깔끔하게 제거하고 복구한 게임 씬 로딩 완료 이벤트
+    private void OnGameSceneLoaded(string sceneName, UnityEngine.SceneManagement.LoadSceneMode loadSceneMode, System.Collections.Generic.List<ulong> clientsCompleted, System.Collections.Generic.List<ulong> clientsTimedOut)
+    {
+        if (sceneName == "GameScene" && NetworkManager.Singleton.IsServer)
+        {
+            NetworkManager.Singleton.SceneManager.OnLoadEventCompleted -= OnGameSceneLoaded;
+
+            // 1. 게임 씬에 배치해둔 "SpawnPoint" 태그를 가진 위치들을 모두 찾습니다.
+            GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPoint");
+
+            System.Collections.Generic.List<NetworkObject> spawnedPlayers = new System.Collections.Generic.List<NetworkObject>();
+
+            for (int i = 0; i < clientsCompleted.Count; i++)
+            {
+                ulong clientId = clientsCompleted[i];
+
+                // 🌟 [수정됨] gameCharacterPrefabs -> characterPrefabs 로 변수 이름 통일 (오류 방지)
+                if (i < characterPrefabs.Length && characterPrefabs[i] != null)
+                {
+                    // 2. 기본 스폰 위치 설정 (만약 태그 설정을 깜빡했을 경우를 대비한 안전장치)
+                    Vector3 spawnPos = new Vector3(i * 2.0f, 1f, 0f);
+                    Quaternion spawnRot = Quaternion.identity;
+
+                    // 3. 씬에서 찾은 스폰 포인트가 접속한 인원수만큼 넉넉하다면 그 위치와 회전값을 적용!
+                    if (spawnPoints != null && i < spawnPoints.Length)
+                    {
+                        spawnPos = spawnPoints[i].transform.position;
+                        spawnRot = spawnPoints[i].transform.rotation;
+                    }
+
+                    // 지정된 위치와 방향으로 진짜 프리팹 스폰
+                    GameObject playerInstance = Instantiate(characterPrefabs[i], spawnPos, spawnRot);
+                    NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
+                    netObj.SpawnAsPlayerObject(clientId, true);
+
+                    spawnedPlayers.Add(netObj);
+                }
+            }
+
+            // [체인 연결 로직] 스폰된 플레이어들을 사슬로 연결
+            for (int i = 0; i < spawnedPlayers.Count - 1; i++)
+            {
+                RopeController rope = spawnedPlayers[i].GetComponent<RopeController>();
+                if (rope != null)
+                {
+                    rope.targetNetworkObjectId.Value = spawnedPlayers[i + 1].NetworkObjectId;
+                }
+            }
+
+            Debug.Log("✅ 모든 지정된 위치에 플레이어 스폰 및 사슬 연결 완료!");
         }
     }
 
@@ -126,7 +181,6 @@ public class RoomManager : MonoBehaviour
 
     private void UpdatePlayerSlotsUI(ulong clientId)
     {
-        // 🌟 소유권 배정 스폰 권한은 오직 호스트(Server)만 가지고 제어해야 신뢰성이 보장됩니다.
         if (!NetworkManager.Singleton.IsServer) return;
 
         ClearSpawnedCharacters();
@@ -145,8 +199,6 @@ public class RoomManager : MonoBehaviour
                         playerStages[i].transform.rotation
                     );
 
-                    // 🌟 [핵심 패치]: 넷코드 네트워크망에 이 캐릭터를 정식 스폰하되, 
-                    // i번째 슬롯에 매칭되는 실제 유저의 고유 ClientId(`connectedClients[i]`)에게 소유권을 넘겨줍니다.
                     NetworkObject netObj = characterInstance.GetComponent<NetworkObject>();
                     if (netObj != null)
                     {
@@ -170,7 +222,6 @@ public class RoomManager : MonoBehaviour
         {
             if (spawnedCharacters[i] != null)
             {
-                // 넷코드 관리 오브젝트는 서버가 Despawn으로 안전하게 네트워크 망에서 해제해야 유실이 없습니다.
                 NetworkObject netObj = spawnedCharacters[i].GetComponent<NetworkObject>();
                 if (netObj != null && netObj.IsSpawned)
                 {
