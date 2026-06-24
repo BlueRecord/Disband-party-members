@@ -97,6 +97,28 @@
         "com.unity.modules.uielements": "1.0.0"
       }
     },
+<<<<<<< Updated upstream
+=======
+    "com.unity.multiplayer.center.quickstart": {
+      "version": "1.1.2",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.modules.uielements": "1.0.0",
+        "com.unity.multiplayer.center": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.multiplayer.playmode": {
+      "version": "2.0.2",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.nuget.newtonsoft-json": "2.0.2"
+      },
+      "url": "https://packages.unity.com"
+    },
+>>>>>>> Stashed changes
     "com.unity.netcode.gameobjects": {
       "version": "2.13.0",
       "depth": 0,
@@ -110,6 +132,16 @@
     "com.unity.nuget.mono-cecil": {
       "version": "1.11.6",
       "depth": 1,
+<<<<<<< Updated upstream
+=======
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.nuget.newtonsoft-json": {
+      "version": "3.2.2",
+      "depth": 1,
+>>>>>>> Stashed changes
       "source": "registry",
       "dependencies": {},
       "url": "https://packages.unity.com"
